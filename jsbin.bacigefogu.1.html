@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/bacigefogu/1/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUJI 無印良品 2026 福罐抽獎</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+            overflow-x: hidden;
+        }
+
+        .muji-red { color: #7f0019; }
+        .bg-muji-red { background-color: #7f0019; }
+
+        @keyframes shake {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(3deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(-3deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        .can-container {
+            perspective: 1000px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .can-container:hover {
+            transform: scale(1.05);
+        }
+
+        .can-container.shaking {
+            animation: shake 0.2s infinite;
+        }
+
+        .can-body {
+            position: relative;
+            width: 220px;
+            height: 300px;
+            background: #fff;
+            border-radius: 110px / 25px;
+            border: 2px solid #ddd;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .can-lid {
+            position: absolute;
+            top: 0;
+            width: 224px;
+            height: 45px;
+            background: #e5e5e5;
+            border-radius: 110px / 25px;
+            border: 2px solid #ccc;
+            z-index: 10;
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .can-open .can-lid {
+            transform: translateY(-180px) rotateX(110deg) scale(0.8);
+            opacity: 0;
+        }
+
+        .mascot-reveal {
+            opacity: 0;
+            transform: translateY(60px) scale(0.5);
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .can-open .mascot-reveal {
+            opacity: 1;
+            transform: translateY(-20px) scale(1.1);
+        }
+
+        /* 圖片容器與縮放設定 */
+        .mascot-img-container {
+            width: 140px;
+            height: 140px;
+            overflow: hidden;
+            border-radius: 50%;
+            background-color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+
+        /* 針對長方形原始圖片進行放大與填滿 */
+        #mascotImg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 確保填滿圓框 */
+            transform: scale(1.2); /* 放大 1.2 倍以聚焦在吉祥物主體，避開邊緣白邊 */
+            transition: transform 0.3s ease;
+        }
+
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #7f0019;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        @keyframes confetti-fall {
+            0% { transform: translateY(0) rotate(0); opacity: 1; }
+            100% { transform: translateY(500px) rotate(720deg); opacity: 0; }
+        }
+        
+        .can-label-border {
+            border: 1.5px solid #7f0019;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <header class="text-center mb-10">
+        <h1 class="text-3xl font-bold muji-red tracking-[0.3em] mb-2">福罐 2026</h1>
+        <p class="text-gray-400 text-xs tracking-widest uppercase">Fukukan 2026: Japanese Traditions</p>
+    </header>
+
+    <main class="relative flex flex-col items-center">
+        <div id="canContainer" class="can-container" onclick="openCan()">
+            <div id="lid" class="can-lid"></div>
+            <div class="can-body">
+                <div id="staticLabel" class="absolute inset-0 flex flex-col items-center justify-center p-6 transition-opacity duration-300">
+                    <div class="can-label-border p-3 text-center w-full">
+                        <span class="muji-red font-bold text-2xl block mb-1 tracking-tighter">2026</span>
+                        <div class="h-[1px] bg-[#7f0019] w-full mb-1"></div>
+                        <span class="text-[9px] block leading-tight muji-red font-medium">MUJI 無印良品</span>
+                    </div>
+                    <div class="mt-8 opacity-20 text-[10px] muji-red font-bold">按一下開啟</div>
+                </div>
+
+                <div id="mascotResult" class="mascot-reveal z-20 flex flex-col items-center text-center px-4">
+                    <div class="mascot-img-container mb-4">
+                        <img id="mascotImg" src="" alt="吉祥物">
+                    </div>
+                    <h2 id="mascotName" class="font-bold text-base muji-red leading-tight mb-1"></h2>
+                    <p id="mascotOrigin" class="text-[10px] text-gray-400 font-medium"></p>
+                </div>
+            </div>
+        </div>
+
+        <button id="resetBtn" onclick="resetGame()" class="invisible mt-12 px-10 py-2.5 bg-white border border-gray-200 text-gray-600 rounded-full hover:bg-gray-50 hover:border-gray-300 transition-all text-xs tracking-widest uppercase">
+            再次尋找福氣
+        </button>
+    </main>
+
+    <footer class="mt-16 text-center max-w-xs">
+        <p class="text-[10px] text-gray-400 leading-relaxed tracking-wider">
+            日本各地的傳統工藝，化作小小的吉祥物。<br>
+            每一罐都承載著 2026 年的祝福與願望。
+        </p>
+    </footer>
+
+    <script>
+        const mascots = [
+            { id: "01", name: "積極向上的木雕熊", origin: "北海道 川上郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kurita/00.jpg" },
+            { id: "02", name: "下川原燒土人偶 馬笛", origin: "青森縣 弘前市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/abo/00.jpg" },
+            { id: "03", name: "Coshell的不倒翁人偶 藍蛙", origin: "岩手縣 紫波郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/coshell/00.jpg" },
+            { id: "04", name: "和紙張子 十二生肖 馬", origin: "岩手縣 花卷市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/odashima/00.jpg" },
+            { id: "05", name: "仙台張子 馬", origin: "宮城縣 仙台市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/takahashi/00.jpg" },
+            { id: "06", name: "中山人偶 士鈴 春駒", origin: "秋田縣 橫手市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/hiwatari/00.jpg" },
+            { id: "07", name: "KORANSHO 馬", origin: "福島縣 會津若松市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/koransho/00.jpg" },
+            { id: "08", name: "彌治郎系・梅子木偶", origin: "福島縣 磐城市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/satou/00.jpg" },
+            { id: "09", name: "三春張子 馬", origin: "福島縣 郡山市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/hikoji/00.jpg" },
+            { id: "10", name: "白河不倒翁 梅", origin: "福島縣 白河市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/shirakawa-daruma/00.jpg" },
+            { id: "11", name: "福馬", origin: "福島縣 耶麻郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/nozawa/00.jpg" },
+            { id: "12", name: "吉祥不倒翁 一號 白", origin: "群馬縣 高崎市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/yoshida-daruma/00.jpg" },
+            { id: "13", name: "春日部張子 裝飾馬", origin: "埼玉縣 春日部市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kasukabe-hariko/00.jpg" },
+            { id: "14", name: "豆十二生肖・馬 公母", origin: "埼玉縣 越谷市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/suzukou/00.jpg" },
+            { id: "15", name: "芝原人偶 馬", origin: "千葉縣 長生郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kusanoko/00.jpg" },
+            { id: "16", name: "小貓不倒翁 總會有辦法", origin: "東京都 調布市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/daruchan/00.jpg" },
+            { id: "17", name: "深大寺生肖土鈴 春駒", origin: "東京都 調布市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/jindaiji/00.jpg" },
+            { id: "18", name: "富山土人偶 雷鳥 冬", origin: "富山縣 富山市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/toyama/00.jpg" },
+            { id: "19", name: "紙塑民間藝術品 小狸貓", origin: "富山縣 南礪市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/gokayama/00.jpg" },
+            { id: "20", name: "葫蘆駒", origin: "石川縣 金澤市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/nakajima-menya/00.jpg" },
+            { id: "21", name: "玩具工房 開運招財馬", origin: "愛知縣 瀨戶市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/seto-tougei/00.jpg" },
+            { id: "22", name: "素燒舒心土鈴 馬", origin: "三重縣 四日市市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/eitaku/00.jpg" },
+            { id: "23", name: "京陶人偶 金幣馬", origin: "京都府 京都市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/tsuchida/00.jpg" },
+            { id: "24", name: "京土鈴 OKIBARIYASU", origin: "京都府 京都市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/masoo/00.jpg" },
+            { id: "25", name: "踏浪馬", origin: "奈良縣 香芝市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kashiba/00.jpg" },
+            { id: "26", name: "鳥取的生肖 馬", origin: "鳥取縣 鳥取市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/shinobu/00.jpg" },
+            { id: "27", name: "福馬", origin: "岡山縣 英田郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/youbi/00.jpg" },
+            { id: "28", name: "長州土鈴 消災螃蟹", origin: "山口縣 美禰市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/mingei-kuramoto/00.jpg" },
+            { id: "29", name: "土佐和紙石膏人偶馬", origin: "高知縣 吾川郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/souryusha/00.jpg" },
+            { id: "30", name: "能古見人偶 馬鈴", origin: "佐賀縣 鹿島市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/nogomi/00.jpg" },
+            { id: "31", name: "曳山土人偶 飛龍", origin: "佐賀縣 唐津市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/karatsu/00.jpg" },
+            { id: "32", name: "尾崎人偶 生肖馬", origin: "佐賀縣 神埼市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/ozaki/00.jpg" },
+            { id: "33", name: "頭巾達摩", origin: "佐賀縣 武雄市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/eguchi/00.jpg" },
+            { id: "34", name: "下浦土玩具獅子舞 綠", origin: "熊本縣 天草市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/shimoura/00.jpg" },
+            { id: "35", name: "木葉猿 騎馬猿", origin: "熊本縣 玉名郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/konoha/00.jpg" },
+            { id: "36", name: "佐土原人偶 先見馬", origin: "宮崎縣 宮崎市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/masuya/00.jpg" }
+        ];
+
+        let isOpening = false;
+
+        function openCan() {
+            if (isOpening) return;
+            isOpening = true;
+
+            const container = document.getElementById('canContainer');
+            const staticLabel = document.getElementById('staticLabel');
+            const mascotImg = document.getElementById('mascotImg');
+            
+            mascotImg.style.visibility = 'hidden';
+            container.classList.add('shaking');
+            
+            const randomMascot = mascots[Math.floor(Math.random() * mascots.length)];
+            
+            if (randomMascot.img && randomMascot.img !== "") {
+                mascotImg.src = randomMascot.img;
+            } else {
+                mascotImg.src = `https://placehold.co/200x200/ffffff/7f0019?text=${encodeURIComponent(randomMascot.name)}`;
+            }
+            
+            document.getElementById('mascotName').innerText = randomMascot.name;
+            document.getElementById('mascotOrigin').innerText = randomMascot.origin;
+
+            setTimeout(() => {
+                container.classList.remove('shaking');
+                container.classList.add('can-open');
+                staticLabel.style.opacity = '0';
+                mascotImg.style.visibility = 'visible';
+                createConfetti();
+                setTimeout(() => {
+                    document.getElementById('resetBtn').style.visibility = 'visible';
+                }, 800);
+            }, 800);
+        }
+
+        function createConfetti() {
+            for (let i = 0; i < 40; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.top = '50%';
+                confetti.style.backgroundColor = i % 3 === 0 ? '#7f0019' : (i % 3 === 1 ? '#d4bfa3' : '#ffffff');
+                confetti.style.animation = `confetti-fall ${Math.random() * 2 + 1.5}s linear forwards`;
+                document.body.appendChild(confetti);
+                setTimeout(() => confetti.remove(), 3500);
+            }
+        }
+
+        function resetGame() {
+            const container = document.getElementById('canContainer');
+            document.getElementById('staticLabel').style.opacity = '1';
+            container.classList.remove('can-open');
+            document.getElementById('resetBtn').style.visibility = 'hidden';
+            setTimeout(() => { isOpening = false; }, 600);
+        }
+    </script>
+</body>
+</html>
