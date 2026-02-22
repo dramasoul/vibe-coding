@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/bacigefogu/2/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUJI 無印良品 2026 福罐抽獎</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: #f7f7f7; 
+            color: #333; 
+            overflow-x: hidden; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        .muji-red { color: #7f0019; }
+        
+        /* 從天而降的登場動畫 */
+        @keyframes drop-in {
+            0% { transform: translateY(-100vh); opacity: 0; }
+            60% { transform: translateY(20px); opacity: 1; }
+            80% { transform: translateY(-10px); }
+            100% { transform: translateY(0); }
+        }
+
+        .drop-animation {
+            animation: drop-in 1.2s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+        }
+        
+        /* 搖晃與符號特效 */
+        @keyframes shake { 
+            0%, 100% { transform: rotate(0deg); } 
+            25% { transform: rotate(3deg); } 
+            75% { transform: rotate(-3deg); } 
+        }
+        
+        .can-container { 
+            perspective: 1000px; 
+            cursor: pointer; 
+            transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            flex-shrink: 0;
+            z-index: 20;
+            margin-bottom: 2rem;
+        }
+        
+        .can-container.shaking { animation: shake 0.2s infinite; }
+        
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            font-size: 14px;
+            color: #7f0019;
+            z-index: 50;
+            opacity: 0;
+        }
+
+        @keyframes burst {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        /* 罐體結構 */
+        .can-body { 
+            position: relative; 
+            width: 320px; 
+            height: 440px; 
+            background: #fff; 
+            border-radius: 160px / 45px; 
+            border: 2px solid #ddd; 
+            box-shadow: 0 15px 45px rgba(0,0,0,0.06); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            overflow: hidden; 
+        }
+        
+        .can-lid { 
+            position: absolute; 
+            top: 0; 
+            width: 324px; 
+            height: 65px; 
+            background: #e5e5e5; 
+            border-radius: 160px / 45px; 
+            border: 2px solid #ccc; 
+            z-index: 10; 
+            transition: all 0.7s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+        }
+        
+        .can-open .can-lid { transform: translateY(-260px) rotateX(110deg) scale(0.8); opacity: 0; }
+        
+        /* 內容物佈局 */
+        .main-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            max-width: 800px;
+            min-height: 500px;
+            position: relative;
+        }
+
+        .mascot-reveal { 
+            opacity: 0; 
+            transform: scale(0.9); 
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .can-open .mascot-reveal { opacity: 1; transform: scale(1); }
+
+        .mascot-img-container { 
+            width: 180px; 
+            height: 180px; 
+            overflow: hidden; 
+            border-radius: 50%; 
+            background-color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid #eee; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 15px;
+        }
+        
+        #mascotImg { width: 100%; height: 100%; object-fit: cover; }
+        
+        .can-label-border { border: 2px solid #7f0019; }
+
+        /* 下方獨立文字介紹欄 */
+        .info-panel {
+            width: 100%;
+            max-width: 500px;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 1s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease 0.3s;
+            text-align: center;
+            padding: 0 20px;
+            margin-top: 1rem;
+        }
+
+        .state-open .info-panel {
+            max-height: 1000px;
+            opacity: 1;
+            padding-bottom: 2rem;
+        }
+
+        #mascotDesc {
+            font-size: 13.5px;
+            line-height: 1.8;
+            color: #444;
+            text-align: justify;
+            font-weight: 300;
+        }
+
+        /* 按鈕動畫 */
+        #resetBtn {
+            transition: all 0.5s ease;
+            opacity: 0;
+        }
+        .state-open #resetBtn {
+            opacity: 1;
+        }
+        
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 pt-20">
+
+    <header class="text-center mb-10">
+        <h1 class="text-4xl font-bold muji-red tracking-[0.4em] mb-2">福罐 2026</h1>
+        <p class="text-gray-400 text-[10px] tracking-widest uppercase">Fukukan 2026: Japanese Traditions</p>
+    </header>
+
+    <main id="appContainer" class="relative flex flex-col items-center w-full">
+        <div id="mainStage" class="main-stage">
+            <!-- 福罐本體，位置固定於中央 -->
+            <div id="canContainer" class="can-container drop-animation" onclick="openCan()">
+                <div id="lid" class="can-lid"></div>
+                <div class="can-body">
+                    <!-- 初始標籤 -->
+                    <div id="staticLabel" class="absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity duration-300">
+                        <div class="can-label-border p-6 text-center w-full max-w-[220px]">
+                            <span class="muji-red font-bold text-5xl block mb-2 tracking-tighter">2026</span>
+                            <div class="h-[2px] bg-[#7f0019] w-full mb-2"></div>
+                            <span class="text-xs block leading-tight muji-red font-medium tracking-widest">MUJI 無印良品</span>
+                        </div>
+                        <div class="mt-12 text-sm muji-red font-bold animate-pulse">點擊開啟福運</div>
+                    </div>
+
+                    <!-- 吉祥物結果 -->
+                    <div id="mascotResult" class="mascot-reveal z-20">
+                        <div class="mascot-img-container">
+                            <img id="mascotImg" src="" alt="吉祥物">
+                        </div>
+                        <h2 id="mascotNameInCan" class="font-bold text-xl muji-red mb-1"></h2>
+                        <p id="mascotOriginInCan" class="text-[10px] text-gray-400 tracking-widest uppercase"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 下方獨立介紹區 -->
+            <div id="infoPanel" class="info-panel">
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="h-[1px] bg-gray-300 flex-grow"></div>
+                    <span class="text-[10px] text-gray-400 tracking-[0.3em] uppercase">Mascot Story</span>
+                    <div class="h-[1px] bg-gray-300 flex-grow"></div>
+                </div>
+                <div id="mascotDesc"></div>
+            </div>
+        </div>
+
+        <button id="resetBtn" onclick="resetGame()" class="invisible mt-8 mb-16 px-12 py-3 bg-white border border-gray-200 text-gray-400 rounded-full text-xs tracking-widest uppercase font-medium hover:text-gray-600 hover:border-gray-300 transition-all shadow-sm">再次尋找福氣</button>
+    </main>
+
+    <script>
+        const mascots = [
+            { id: "01", name: "積極向上的木雕熊", origin: "北海道 川上郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kurita/00.jpg", desc: `剛出生時，棕熊只有人類手掌那麼小，長大後卻能擁有壯碩的體格。木雕熊象徵著「快快長大喔」「要變成了不起的人喔」這樣的美好祝福，是希望孩子與人們健康成長的招福物。另一方面，因為熊也讓人聯想到威猛兇猛，所以也有「避邪、驅災」的意涵。希望這隻帶著凜然氣質、充滿正能量的木雕熊，也能為大家帶來向上的好心情！` },
+            { id: "02", name: "下川原燒土人偶 馬笛", origin: "青森縣 弘前市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/abo/00.jpg", desc: `下川原燒原為津輕藩製作日常器皿所用之御用窯。當時的藩主擔心津輕地區的玩具不多，便派人於冬季閒暇之餘製作泥玩偶。此後約200年間，陸續製作出鴿笛、生肖笛等各式各樣的玩偶，進而成為代表津輕的鄉士玩具，受到人們喜愛。` },
+            { id: "03", name: "Coshell的不倒翁 藍蛙", origin: "岩手縣 紫波郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/coshell/00.jpg", desc: `利用內糊技法製作的岩手縣紙糊玩具。表面層層貼上成島和紙，鉛墜使用了小久慈燒的陶土。每個都是手工繪製，豐富有個性的表情皆不相同。有時會爬不起來，用手輔助的話就可以重新爬起來。` },
+            { id: "16", name: "小貓不倒翁 總會有辦法", origin: "東京都 調布市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/daruchan/00.jpg", desc: `位於調布市的深大寺，每年3月3日與4日都會舉辦不倒翁市，是日本三大不倒翁市之一。「小貓不倒翁之家」是一間紅色的小店，「小貓不倒翁」正是小店的招福物，店內陳列著由當地女性親手製作的不倒翁。那隻懶洋洋的貓正抱著「小貓不倒翁」玩耍，傳達出「不管遇到什麼事，總是會有辦法！」的溫暖訊息，為人們注入滿滿正能量。` }
+        ];
+
+        let isOpening = false;
+
+        function createParticles() {
+            const container = document.getElementById('canContainer');
+            const symbols = ['★', '♥', '福', '✨', '●', '✦'];
+            for (let i = 0; i < 18; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 120 + Math.random() * 160;
+                const tx = Math.cos(angle) * dist;
+                const ty = Math.sin(angle) * dist;
+                
+                p.style.setProperty('--tx', `${tx}px`);
+                p.style.setProperty('--ty', `${ty}px`);
+                p.style.left = '50%';
+                p.style.top = '40%';
+                p.style.animation = `burst 0.8s forwards ${Math.random() * 0.2}s`;
+                
+                container.appendChild(p);
+                setTimeout(() => p.remove(), 1000);
+            }
+        }
+
+        function openCan() {
+            if (isOpening) return;
+            isOpening = true;
+            
+            const container = document.getElementById('canContainer');
+            const appContainer = document.getElementById('appContainer');
+            
+            container.classList.remove('drop-animation');
+            container.classList.add('shaking');
+            
+            const randomMascot = mascots[Math.floor(Math.random() * mascots.length)];
+            
+            document.getElementById('mascotImg').src = randomMascot.img;
+            document.getElementById('mascotNameInCan').innerText = randomMascot.name;
+            document.getElementById('mascotOriginInCan').innerText = randomMascot.origin;
+            document.getElementById('mascotDesc').innerText = randomMascot.desc;
+
+            setTimeout(() => {
+                container.classList.remove('shaking');
+                container.classList.add('can-open');
+                appContainer.classList.add('state-open');
+                
+                createParticles();
+                document.getElementById('staticLabel').style.opacity = '0';
+                
+                setTimeout(() => { 
+                    document.getElementById('resetBtn').classList.remove('invisible');
+                    document.getElementById('resetBtn').style.opacity = '1';
+                }, 800);
+            }, 800);
+        }
+
+        function resetGame() {
+            const container = document.getElementById('canContainer');
+            const appContainer = document.getElementById('appContainer');
+            
+            document.getElementById('staticLabel').style.opacity = '1';
+            container.classList.remove('can-open');
+            appContainer.classList.remove('state-open');
+            document.getElementById('resetBtn').style.opacity = '0';
+            
+            setTimeout(() => { 
+                document.getElementById('resetBtn').classList.add('invisible');
+                container.classList.remove('drop-animation');
+                void container.offsetWidth; 
+                container.classList.add('drop-animation');
+                isOpening = false; 
+            }, 600);
+        }
+    </script>
+</body>
+</html>
