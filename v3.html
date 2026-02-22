@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<!--
+Created using JS Bin
+http://jsbin.com
+
+Copyright (c) 2026 by anonymous (http://jsbin.com/bacigefogu/3/edit)
+
+Released under the MIT license: http://jsbin.mit-license.org
+-->
+<meta name="robots" content="noindex">
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MUJI 無印良品 2026 福罐抽獎</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans TC', sans-serif; 
+            background-color: #f7f7f7; 
+            color: #333; 
+            overflow-x: hidden; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        .muji-red { color: #7f0019; }
+        
+        /* 搖晃動畫 */
+        @keyframes shake { 
+            0%, 100% { transform: rotate(0deg); } 
+            25% { transform: rotate(3deg); } 
+            75% { transform: rotate(-3deg); } 
+        }
+        
+        .can-container { 
+            perspective: 1000px; 
+            cursor: pointer; 
+            position: relative; 
+            transition: transform 0.3s ease;
+            z-index: 20;
+        }
+        
+        .can-container.shaking { animation: shake 0.2s infinite; }
+        
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            font-size: 14px;
+            color: #7f0019;
+            z-index: 50;
+            opacity: 0;
+        }
+
+        @keyframes burst {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        /* 罐體結構 */
+        .can-body { 
+            position: relative; 
+            width: 280px; 
+            height: 380px; 
+            background: #fff; 
+            border-radius: 140px / 40px; 
+            border: 2px solid #ddd; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            overflow: hidden; 
+        }
+        
+        @media (min-width: 640px) {
+            .can-body { width: 320px; height: 440px; border-radius: 160px / 45px; }
+        }
+        
+        .can-lid { 
+            position: absolute; 
+            top: 0; 
+            width: 101%; 
+            height: 60px; 
+            background: #e5e5e5; 
+            border-radius: 160px / 45px; 
+            border: 2px solid #ccc; 
+            z-index: 10; 
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+        }
+        
+        .can-open .can-lid { transform: translateY(-200px) rotateX(100deg); opacity: 0; }
+        
+        /* 吉祥物顯示區 */
+        .mascot-reveal { 
+            opacity: 0; 
+            transform: scale(0.85); 
+            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .can-open .mascot-reveal { opacity: 1; transform: scale(1); }
+
+        .mascot-img-container { 
+            width: 180px; 
+            height: 180px; 
+            overflow: hidden; 
+            border-radius: 50%; 
+            background-color: #fff; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border: 1px solid #eee; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+            margin-bottom: 10px;
+        }
+        
+        #mascotImg { width: 100%; height: 100%; object-fit: cover; }
+        
+        .can-label-border { border: 2px solid #7f0019; }
+
+        /* 文字介紹區 (置於罐子下方) */
+        .info-panel {
+            width: 100%;
+            max-width: 600px;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.6s ease;
+            text-align: center;
+            margin-top: 2rem;
+            padding: 0 1rem;
+        }
+
+        .state-open .info-panel {
+            max-height: 1000px; /* 足夠撐開的高度 */
+            opacity: 1;
+            padding-bottom: 3rem;
+        }
+
+        #mascotDesc {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #444;
+            text-align: justify;
+            font-weight: 300;
+        }
+
+        /* 再次抽獎按鈕 */
+        #resetBtn {
+            opacity: 0;
+            transition: opacity 0.5s ease 0.5s;
+        }
+        .state-open #resetBtn {
+            opacity: 1;
+        }
+        
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center p-6 pt-12 md:pt-20">
+
+    <header class="text-center mb-10 md:mb-16">
+        <h1 class="text-3xl md:text-4xl font-bold muji-red tracking-[0.4em] mb-2">福罐 2026</h1>
+        <p class="text-gray-400 text-[10px] tracking-widest uppercase">Fukukan 2026: Japanese Traditions</p>
+    </header>
+
+    <main id="appContainer" class="flex flex-col items-center w-full max-w-4xl">
+        
+        <!-- 福罐容器：始終保持中央 -->
+        <div id="canContainer" class="can-container" onclick="openCan()">
+            <div id="lid" class="can-lid"></div>
+            <div class="can-body">
+                <!-- 初始標籤 -->
+                <div id="staticLabel" class="absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity duration-300">
+                    <div class="can-label-border p-6 text-center w-full max-w-[200px] md:max-w-[220px]">
+                        <span class="muji-red font-bold text-4xl md:text-5xl block mb-2 tracking-tighter">2026</span>
+                        <div class="h-[2px] bg-[#7f0019] w-full mb-2"></div>
+                        <span class="text-[10px] md:text-xs block leading-tight muji-red font-medium tracking-widest">MUJI 無印良品</span>
+                    </div>
+                    <div class="mt-10 text-xs md:text-sm muji-red font-bold animate-pulse">點擊開啟福運</div>
+                </div>
+
+                <!-- 結果顯示：圖片與簡單標題 -->
+                <div id="mascotResult" class="mascot-reveal z-20">
+                    <div class="mascot-img-container">
+                        <img id="mascotImg" src="" alt="吉祥物">
+                    </div>
+                    <h2 id="mascotNameMini" class="font-bold text-lg muji-red mb-1"></h2>
+                    <p id="mascotOriginMini" class="text-[9px] text-gray-400 tracking-widest uppercase"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 詳細介紹區：開罐後在下方展開 -->
+        <div id="infoPanel" class="info-panel">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="h-[1px] bg-gray-200 flex-grow"></div>
+                <span class="text-[10px] text-gray-400 tracking-[0.3em] uppercase">Mascot Story</span>
+                <div class="h-[1px] bg-gray-200 flex-grow"></div>
+            </div>
+            
+            <h3 id="mascotNameFull" class="font-bold text-2xl muji-red mb-2"></h3>
+            <p id="mascotOriginFull" class="text-xs text-gray-400 tracking-widest mb-6"></p>
+            <div id="mascotDesc" class="px-2 md:px-0"></div>
+
+            <button id="resetBtn" onclick="resetGame()" class="mt-12 px-10 py-3 bg-white border border-gray-200 text-gray-400 rounded-full text-[10px] tracking-widest uppercase font-medium hover:text-gray-600 hover:border-gray-300 transition-all shadow-sm">再次尋找福氣</button>
+        </div>
+
+    </main>
+
+    <script>
+        const mascots = [
+            { id: "01", name: "積極向上的木雕熊", origin: "北海道 川上郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kurita/00.jpg", desc: `剛出生時，棕熊只有人類手掌那麼小，長大後卻能擁有壯碩的體格。木雕熊象徵著「快快長大喔」「要變成了不起的人喔」這樣的美好祝福，是希望孩子與人們健康成長的招福物。另一方面，因為熊也讓人聯想到威猛兇猛，所以也有「避邪、驅災」的意涵。希望這隻帶著凜然氣質、充滿正能量的木雕熊，也能為大家帶來向上的好心情！` },
+            { id: "02", name: "下川原燒土人偶 馬笛", origin: "青森縣 弘前市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/abo/00.jpg", desc: `下川原燒原為津輕藩製作日常器皿所用之御用窯。當時的藩主擔心津輕地區的玩具不多，便派人於冬季閒暇之餘製作泥玩偶。此後約200年間，陸續製作出鴿笛、生肖笛等各式各樣的玩偶，進而成為代表津輕的鄉士玩具，受到人們喜愛。` },
+            { id: "03", name: "Coshell的不倒翁 藍蛙", origin: "岩手縣 紫波郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/coshell/00.jpg", desc: `利用內糊技法製作的岩手縣紙糊玩具。表面層層貼上成島和紙，鉛墜使用了小久慈燒的陶土。每個都是手工繪製，豐富有個性的表情皆不相同。有時會爬不起來，用手輔助的話就可以重新爬起來。` },
+            { id: "04", name: "和紙張子 十二生肖 馬", origin: "岩手縣 花卷市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/odashima/00.jpg", desc: `根據五行的觀念，馬象徵草木茂盛、生機盎然的鼎盛時期，正如馬那奔放有力、充滿朝氣的姿態。牠熱愛自由、活潑又開朗，總是充滿行動力，據說馬年是人際關係順暢、財運豐收的一年。` },
+            { id: "05", name: "仙台張子 馬", origin: "宮城縣 仙台市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/takahashi/00.jpg", desc: `仙台每年都會製作活用和紙柔和質感的可愛搖頭生 肖玩偶，備受人們喜愛。中國古代以十二支表示時間的單位，為了讓不識字的平民也能理解，所以冠上動物的名稱，便成為了現在12生肖的起源。` },
+            { id: "06", name: "中山人偶 士鈴 春駒", origin: "秋田縣 橫手市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/hiwatari/00.jpg", desc: `中山人偶自明治初期便在秋田縣橫手市開始製作，其特色為色彩鮮明、醒目。據說當時為了在戶外市集販售時，即使在白雪覆蓋的環境中也能被遠遠看到，因此特別採用了鮮豔的色調。` },
+            { id: "07", name: "KORANSHO 馬", origin: "福島縣 會津若松市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/koransho/00.jpg", desc: `中湯川人偶是在會津若松市山區製作的傳統工藝，造型多樣、表情各具特色。「KORANSHO」在當地的方言中有「歡迎光臨」或「歡迎您來」的意思。這款生肖馬士人偶，寓意萬事如意、好運臨門，是帶有祝福心意的招福物。` },
+            { id: "08", name: "彌治郎系・梅子木偶", origin: "福島縣 磐城市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/satou/00.jpg", desc: `彌治郎木偶起源自江戶時代，發展於現今宮城縣白石市的彌治郎地區。其特色是頭頂繪有類似貝雷帽的圖案，搭配溫柔可愛的表情，給人一種平靜安定的感受。這款名為「梅子木偶」的手掌大小作品，最初的創作用意，是希望能讓人們提早感受到春天的氣息與溫暖。` },
+            { id: "09", name: "三春張子 馬", origin: "福島縣 郡山市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/hikoji/00.jpg", desc: `這款張子馬結合了質譜可愛的神情與三春駒的裝飾圖案，由「彥治民藝」精心製作。「彥治民藝」是延續自江戶時代、三春地區鄉土玩具發源地「高柴裝飾宅邸」的一家傳統工藝商，專門製作十二生肖鄉士玩具「三春駒」（木雕）。據說這匹張子馬象徵家運昌隆、生 意興隆，是充滿祝福意涵的招福物。` },
+            { id: "10", name: "白河不倒翁 梅", origin: "福島縣 白河市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/shirakawa-daruma/00.jpg", desc: `白河不倒翁的起源可追溯至約三百年前，靈感來自因寬政改革而知名的松平定信公，當時他倡導「豐富庶民生活」的理念，因此誕生了這款象徵好運的不倒翁。「白河不倒翁•梅」是一款繪有梅花圖樣的小巧不倒翁，寓意著早春來臨時的喜悅與希望。` },
+            { id: "11", name: "福馬", origin: "福島縣 耶麻郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/nozawa/00.jpg", desc: `馬自古以來就是與人類一同生活的夥伴，深受人們喜愛。長年致力於製作會津傳統張子的「野澤民藝」，傾情打造了這款可愛的生肖白馬。不僅造型討喜，白馬還被視為神明的坐騎，據說能帶來生命力、豐收、健康與好運，是象徵幸福與聲望的招福物。` },
+            { id: "12", name: "吉祥不倒翁 一號 白", origin: "群馬縣 高崎市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/yoshida-daruma/00.jpg", desc: `「高崎不倒翁」是約兩百年前誕生、至今仍廣受喜愛的日本傳統工藝品。它擁有圓潤飽滿的造型，就算傾倒也能馬上站起來，象徵堅韌不拔的精神。眉毛與鬍鬚則以象徵長壽的鶴與龜為靈感設計，增添威嚴感。每一個不倒翁都是由工匠細心打造、注入生命力的作品，寄託著帶來好運與幸福的美好願望。` },
+            { id: "13", name: "春日部張子 裝飾馬", origin: "埼玉縣 春日部市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kasukabe-hariko/00.jpg", desc: `這是在和紙產地埼玉縣小川町利用手工和紙製作的「紙玩偶」。使用以「楮」作為原料製作的傳統「細川紙」，已被列入聯合國教科文組織的無形文化遺產中。我們仍然使用自江戶時代傳承至今的手工製法，一個一個地精心製作。` },
+            { id: "14", name: "豆十二生肖・馬 公母", origin: "埼玉縣 越谷市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/suzukou/00.jpg", desc: `埼玉縣靠近大都市大江戶（現在的東京），是當時玩具的一大生產區，且繁榮至今。沿著日光街道，梧桐樹從以前便生長良好，用桐花粉和生麵糊揉捏凝固再上色的揉捏玩偶，具有結實且輕盈的特色。` },
+            { id: "15", name: "芝原人偶 馬", origin: "千葉縣 長生郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kusanoko/00.jpg", desc: `芝原人偶自明治初期起，便在千葉縣長南町芝原地區開始製作，並傳承至今。它以質樸的造型與配色聞名。馬在日本自古墳時代起便被視為吉祥動物，曾是貴族乘騎的重要象徵。時至今日，馬依然被認為是招來好運、帶來幸福與開運的吉利象徵，深受大眾喜愛。` },
+            { id: "16", name: "小貓不倒翁 總會有辦法", origin: "東京都 調布市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/daruchan/00.jpg", desc: `位於調布市的深大寺，每年3月3日與4日都會舉辦不倒翁市，是日本三大不倒翁市之一。「小貓不倒翁之家」是一間紅色的小店，「小貓不倒翁」正是小店的招福物，店內陳列著由當地女性親手製作的不倒翁。那隻懶洋洋的貓正抱著「小貓不倒翁」玩耍，傳達出「不管遇到什麼事，總是會有辦法！」的溫暖訊息，為人們注入滿滿正能量。` },
+            { id: "17", name: "深大寺生肖土鈴 春駒", origin: "東京都 調布市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/jindaiji/00.jpg", desc: `許多神社和寺廟供奉的士鈴作為驅魔符和護身符，在繩文時代之前就在日本製造。「武藏野深大寺窯」自昭和32年(1957年) 創業以來一直生產深大寺土鈴，作為裝飾品和紀念品而受到人們的喜愛。每件作品都是手繪製作，因此表情和氛圍都會有所不同。` },
+            { id: "18", name: "富山土人偶 雷鳥 冬", origin: "富山縣 富山市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/toyama/00.jpg", desc: `富山士人偶是一項源自江戶時代、世代相傳的傳統手工民藝品。其造型與技法融合了富山當地的產業特色、民間風俗與歷史文化，每一件作品都由職人用心製作。雷鳥被視為「立山神的使者」，在富山地區被賦子崇高意義與重視，這是一款仿照雷鳥造型所製作的土人偶。` },
+            { id: "19", name: "紙塑工藝品 小狸貓", origin: "富山縣 南礪市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/gokayama/00.jpg", desc: `位於富山縣五箇山的「相倉合掌造村落」迎來註冊世界遺產30週年，五箇山自古以來便從事手工和紙的製作。這款可愛的招福物「小狸貓」，正是活用和紙製程中所產生的邊角料，將其製成和紙黏土後壓模成形，乾燥後再貼上和紙，並以手工細緻繪製圖案而成。` },
+            { id: "20", name: "葫蘆駒", origin: "石川縣 金澤市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/nakajima-menya/00.jpg", desc: `據說金澤張子最初源自加賀藩時期，下級武士為補貼家用所從事的副業，並多在新年市集與祭典時販售。如今，它以質樸可愛的造型深受喜愛，成為富有地方特色的鄉士玩具。手持葫蘆駒象徵吉祥如意，是祈福納福的小物。` },
+            { id: "21", name: "開運招財馬", origin: "愛知縣 瀨戶市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/seto-tougei/00.jpg", desc: `瀨戶擁有豐富的陶土，從平安時代起持續製作陶器約有千年之久，這就是人們熟悉的日常陶器「瀨戶陶器」。職人們使用多樣化製造技術和瀨戶的白色陶土，在保留傳統的同時，一心一意地製作著貼近日常生活的新玩具。` },
+            { id: "22", name: "素燒舒心土鈴 馬", origin: "三重縣 四日市市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/eitaku/00.jpg", desc: `素燒舒心人偶是一種承襲傳統技法製作的土鈴，造型溫潤，令人感到放鬆療癒。在日本文化中，馬自古便象徵勇往直前、帶來福氣，被視為開拓新局、招來好運的吉利象徵。` },
+            { id: "23", name: "京陶人偶 金幣馬", origin: "京都府 京都市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/tsuchida/00.jpg", desc: `京陶人偶是於京都製作的傳統陶雕人偶，以濃彩、淡彩 與高溫本燒等多樣的上色技法廣受喜愛。這款騎在金幣上的馬人偶，象徵著好運、飛躍與繁榮。在江戶時代，白馬被視為能提升財運的神使，其奔馳的姿態象徵財運的上升。` },
+            { id: "24", name: "京土鈴 OKIBARIYASU", origin: "京都府 京都市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/masoo/00.jpg", desc: `「京土鈴」是來自京都方言「京言」的招福物。剛出生的小馬努力站起來的模樣，象徵著積極進取與成長的能量。活潑的小馬也代表順利分娩的祝福。光是看到它，就能感受到滿满的元氣。「OKIBARIYASU」在京都方言中的意思就是「加油喔」。` },
+            { id: "25", name: "踏浪馬", origin: "奈良縣 香芝市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/kashiba/00.jpg", desc: `這款生肖木馬由「GoodJob!香芝中心」製作，該機構致力於為身心障礙者創造新的就業機會。自古以來，馬被視為生命力的象徵，也象徵著繁榮與希望。這匹木馬以稚氣可愛的表情、乘風破浪的姿態，傳達出即使面對困難，也能堅定前行的信心與勇氣。` },
+            { id: "26", name: "鳥取的生肖 馬", origin: "鳥取縣 鳥取市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/shinobu/00.jpg", desc: `「鳥取的生肖」是以當地針葉樹木雕刻而成的多彩鄉土生肖人偶。鳥取自古以來即是手工藝蓬勃發展的地區，其中「漂流人偶」的傳統技藝正是源自此地。這款生肖馬的特色在於活潑可愛的表情與現代色彩的搭配。` },
+            { id: "27", name: "福馬", origin: "岡山縣 英田郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/youbi/00.jpg", desc: `「福馬」是一款以日本扁柏一一手工打造的生肖木車，所使用的木材來自岡山縣西粟倉村的森林，該地代代傳承、用心培育的高品質扁柏散發著天然的芳香。「馬」在日文中發音為「UMA」，搭配其奔馳的姿態，象徵著萬事如意、好運連連。據說福馬奔跑的模樣能為周遭帶來正向能量，是深具祝福意涵的招福生肖車。` },
+            { id: "28", name: "長州土鈴 消災螃蟹", origin: "山口縣 美禰市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/mingei-kuramoto/00.jpg", desc: `這款以長州土鈴製作的螃蟹，擁有鮮紅亮眼的外殼,被認為具有驅邪避災的效果，而那對巨大的蟹鉗，則象徵能斬斷厄運與不好的緣分，因此被視為一種招福的生物。它所蘊含的強大力量能為人們帶來好運。` },
+            { id: "29", name: "土佐和紙石膏人偶馬", origin: "高知縣 吾川郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/souryusha/00.jpg", desc: `這款馬造型的人偶是以土佐和紙結合石膏製作而成，採用從背面上色的傳統技法。石膏中混入紅土等顏料，再以專門的繪畫工具上色，呈現出厚實、深邃的質感。` },
+            { id: "30", name: "能古見人偶 馬鈴", origin: "佐賀縣 鹿島市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/nogomi/00.jpg", desc: `能古見人偶是日本三大稻荷之一—祐德稻荷神社的知名參拜紀念品，最早於1945年二戰結束後開始製作，目的是希望透過這些人偶為人們的心靈帶來撫慰興喜悅。人偶所傳遞的理念是：只要朝著夢想奔跑，終將順利如願，藉由這份信念，為大家注入鼓勵與勇氣。` },
+            { id: "31", name: "曳山土人偶 飛龍", origin: "佐賀縣 唐津市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/karatsu/00.jpg", desc: `「唐津宮日祭」作為唐津神社的秋季例行大祭，在唐津神社盛大舉行。其中重頭戲是曳山遊行，在激烈的動作中展現了唐津人的幹勁。共有14輛宏偉而歷史悠久的曳山花車，每輛都是以文政2年製作的紅獅子為原型，一一地手工製作成曳山玩偶。` },
+            { id: "32", name: "尾崎人偶 生肖馬", origin: "佐賀縣 神埼市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/ozaki/00.jpg", desc: `尾崎人偶的起源可追溯至13世紀未的元寇戰役時期，當時來自大陸的俘虜被安置於當地，因懷念故鄉而開始製作人偶，並於在地廟會中販售，漸漸受到居民喜愛。其中的「生肖馬」土鈴，以紅、藍、黃等傳統色彩為基調，融合現代風格的可愛元素，展現出古典與時尚兼具的魅力。` },
+            { id: "33", name: "頭巾達摩", origin: "佐賀縣 武雄市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/eguchi/00.jpg", desc: `明治十五年，原田龜次郎拜師成為博多人偶師的弟子，經過在九州各地修行，最後來到佐賀縣嬉野町吉田山。為了感謝弓野酒造的照顧，他開始製作正統的「弓野人偶」。這款士燒人偶以素雅的造型搭配鮮明色彩，展現出迷人的對比。其中最具特色的是「頭巾達摩」，與一般達摩不同，它以雙手緊握頭巾的姿態呈現堅毅不屈的精神。` },
+            { id: "34", name: "下浦土玩具獅子舞 綠", origin: "熊本縣 天草市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/shimoura/00.jpg", desc: `在有著超過260年歷史的下浦神社秋祭中，最受矚目的活動就是熱鬧的獅子舞表演。這對紅藍色獅子會展現活力四射的舞姿，而傳說中被獅子咬到頭則被稱為「神附身」，象徵獲得神明庇佑。這款以舞獅為主題的鄉土玩具，是能帶來好運的招福物。` },
+            { id: "35", name: "木葉猿 騎馬猿", origin: "熊本縣 玉名郡", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/konoha/00.jpg", desc: `相傳約在1300年前，木葉山的紅土被用來製作宗教祭器，而剩下的土壤則被遺棄。這些被丢棄的紅土在傳說中化身為猴子，也就是「木葉猿」的由來。木葉猿自古以來被視為具有驅邪、避災、保佑順產與子孫繁盛的守護神，深受信仰與喜愛。這款人偶以手工揉製成型，保留了素燒土色的質樸風格，展現出獨特的民藝魅力。` },
+            { id: "36", name: "佐土原人偶 先見馬", origin: "宮崎縣 宮崎市", img: "https://www.muji.tw/tw/feature/25aw/fukukan2026/assets/img/modal/masuya/00.jpg", desc: `據說佐土原玩偶的起源始於約400年前向朝鮮的陶工學習玩偶的製作方法。在有限的地方，代代相傳的泥人偶製作者已經變成了獨自一人，但仍努力創造出能夠傳承到下一個100年的玩偶，讓這些玩偶與您的心靈相伴。` }
+        ];
+
+        let isOpening = false;
+
+        function createParticles() {
+            const container = document.getElementById('canContainer');
+            const symbols = ['★', '♥', '福', '✨', '●', '✦'];
+            for (let i = 0; i < 18; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.innerText = symbols[Math.floor(Math.random() * symbols.length)];
+                
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 120 + Math.random() * 150;
+                const tx = Math.cos(angle) * dist;
+                const ty = Math.sin(angle) * dist;
+                
+                p.style.setProperty('--tx', `${tx}px`);
+                p.style.setProperty('--ty', `${ty}px`);
+                p.style.left = '50%';
+                p.style.top = '40%';
+                p.style.animation = `burst 0.8s forwards ${Math.random() * 0.2}s`;
+                
+                container.appendChild(p);
+                setTimeout(() => p.remove(), 1000);
+            }
+        }
+
+        function openCan() {
+            if (isOpening) return;
+            isOpening = true;
+            
+            const container = document.getElementById('canContainer');
+            const app = document.getElementById('appContainer');
+            
+            // 隨機抽選
+            const randomMascot = mascots[Math.floor(Math.random() * mascots.length)];
+            
+            // 寫入資訊
+            document.getElementById('mascotImg').src = randomMascot.img;
+            document.getElementById('mascotNameMini').innerText = randomMascot.name;
+            document.getElementById('mascotOriginMini').innerText = randomMascot.origin;
+            
+            document.getElementById('mascotNameFull').innerText = randomMascot.name;
+            document.getElementById('mascotOriginFull').innerText = randomMascot.origin;
+            document.getElementById('mascotDesc').innerText = randomMascot.desc;
+
+            // 動畫流程
+            container.classList.add('shaking');
+            
+            setTimeout(() => {
+                container.classList.remove('shaking');
+                container.classList.add('can-open');
+                app.classList.add('state-open');
+                
+                createParticles();
+                document.getElementById('staticLabel').style.opacity = '0';
+                
+                // 平滑滾動到內容區 (僅在手機端或罐子較大時)
+                setTimeout(() => {
+                    if(window.innerHeight < 800) {
+                        window.scrollTo({ top: 100, behavior: 'smooth' });
+                    }
+                }, 800);
+            }, 800);
+        }
+
+        function resetGame() {
+            const container = document.getElementById('canContainer');
+            const app = document.getElementById('appContainer');
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            document.getElementById('staticLabel').style.opacity = '1';
+            container.classList.remove('can-open');
+            app.classList.remove('state-open');
+            
+            setTimeout(() => { 
+                isOpening = false; 
+            }, 600);
+        }
+    </script>
+</body>
+</html>
